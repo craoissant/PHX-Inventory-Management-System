@@ -1,0 +1,539 @@
+/* Requests page — intentionally simple and task-focused */
+
+.requests-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px;
+  color: #222;
+}
+
+.requests-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.requests-header h1,
+.request-create-inner h2,
+.request-section h2 {
+  margin: 0;
+}
+
+.requests-subtitle,
+.request-create-copy {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: #777;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.request-message {
+  margin-bottom: 20px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.request-message-error {
+  background: #fff0ef;
+  border: 1px solid #e4b8b4;
+}
+
+.request-message-success {
+  background: #f0f7ed;
+  border: 1px solid #bdd4b4;
+}
+
+.request-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 28px;
+  align-items: start;
+}
+
+.request-main-column,
+.request-create-panel {
+  min-width: 0;
+}
+
+.request-create-panel {
+  position: sticky;
+  top: 24px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.request-create-inner {
+  padding: 24px;
+}
+
+.request-create-inner h2 {
+  font-size: 24px;
+}
+
+.request-section {
+  margin-bottom: 32px;
+}
+
+.request-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.request-section-heading h2 {
+  font-size: 22px;
+}
+
+.request-action-card,
+.request-history-card {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.request-action-card {
+  margin-bottom: 10px;
+  padding: 18px;
+}
+
+.request-action-card-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.request-action-card h3,
+.request-history-card h3 {
+  margin: 4px 0;
+  font-size: 16px;
+}
+
+.request-action-card p,
+.request-history-card p {
+  margin: 4px 0 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.request-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.request-list {
+  display: grid;
+  gap: 10px;
+}
+
+.request-card-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.request-card-date {
+  color: #888;
+  font-size: 12px;
+}
+
+.request-card-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.request-chevron {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ddd;
+  border-radius: 50%;
+  color: #666;
+}
+
+.request-card-body {
+  padding: 0 18px 18px;
+  border-top: 1px solid #eee;
+}
+
+.request-card-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding: 15px 0;
+  color: #555;
+  font-size: 13px;
+}
+
+.request-card-details span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.request-card-details strong {
+  color: #888;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.request-status {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eee;
+  color: #555;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+
+.status-pending {
+  background: #fff4d7;
+  color: #795900;
+}
+
+.status-approved {
+  background: #edf6e9;
+  color: #456638;
+}
+
+.status-rejected {
+  background: #fae9e7;
+  color: #8a3932;
+}
+
+.status-checkout-pending,
+.status-return-pending {
+  background: #eaf0f7;
+  color: #435d79;
+}
+
+.status-checked-out,
+.status-taken {
+  background: #eee9f7;
+  color: #604b80;
+}
+
+.status-returned,
+.status-verified,
+.status-completed {
+  background: #edf6e9;
+  color: #456638;
+}
+
+.request-item-list {
+  border-top: 1px solid #eee;
+}
+
+.request-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.request-item > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.request-item > div:first-child span {
+  color: #777;
+  font-size: 12px;
+}
+
+.request-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #777;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.request-inline-action {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 9px;
+  background: #f7f7f5;
+}
+
+.request-inline-action h4 {
+  margin: 4px 0;
+  font-size: 16px;
+}
+
+.request-inline-action p {
+  margin: 5px 0 14px;
+}
+
+.request-check-list {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0;
+}
+
+.request-check-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid #ddd;
+  border-radius: 7px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.request-check-list input,
+.request-asset-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: #222;
+}
+
+.request-take-action {
+  border-left: 3px solid #222;
+}
+
+.request-info-action {
+  border-left: 3px solid #aaa;
+}
+
+.request-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+}
+
+.request-field > span {
+  color: #555;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.request-field input,
+.request-field select,
+.request-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid #d5d5d5;
+  border-radius: 7px;
+  background: #fff;
+  color: #222;
+  font: inherit;
+}
+
+.request-field textarea {
+  resize: vertical;
+}
+
+.request-asset-picker {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.request-asset-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.request-asset-option:last-child {
+  border-bottom: 0;
+}
+
+.request-asset-option.selected {
+  background: #f5f5f2;
+}
+
+.request-asset-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.request-asset-option strong {
+  font-size: 13px;
+}
+
+.request-asset-option small {
+  overflow: hidden;
+  color: #777;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-picker-empty {
+  padding: 20px;
+  color: #777;
+  text-align: center;
+}
+
+.request-selection-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  color: #666;
+  font-size: 12px;
+}
+
+.request-date-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.request-button,
+.request-submit,
+.request-link-button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.request-button {
+  padding: 9px 13px;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.request-button:disabled,
+.request-submit:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.request-button-primary,
+.request-submit {
+  border-color: #222;
+  background: #222;
+  color: #fff;
+}
+
+.request-button-danger {
+  border-color: #a74b44;
+  background: #fff;
+  color: #8a3932;
+}
+
+.request-button-light {
+  background: #fff;
+  color: #444;
+}
+
+.request-submit {
+  width: 100%;
+  margin-top: 22px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.request-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #555;
+  text-decoration: underline;
+}
+
+.requests-loading {
+  padding: 60px 20px;
+  color: #777;
+  text-align: center;
+}
+
+@media (max-width: 1000px) {
+  .requests-page {
+    padding: 22px;
+  }
+
+  .request-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .request-create-panel {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .requests-page {
+    padding: 16px;
+  }
+
+  .requests-header,
+  .request-action-card-main,
+  .request-card-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .request-action-buttons {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .request-button {
+    flex: 1;
+  }
+
+  .request-date-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .request-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .request-item-meta {
+    flex-wrap: wrap;
+  }
+}

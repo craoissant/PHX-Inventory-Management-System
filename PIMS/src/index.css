@@ -1,0 +1,170 @@
+:root {
+  --text: #4f5a55;
+  --text-h: #18201c;
+
+  --bg: #f5f7f6;
+  --white: #ffffff;
+
+  --border: #dfe5e2;
+  --border-light: #e8ecea;
+  --border-dark: #cbd5d0;
+
+  --accent: #1f5c45;
+  --accent-dark: #24483b;
+  --accent-light: #edf3f0;
+
+  --success-bg: #e3f0ea;
+  --success-text: #28604c;
+
+  --warning-bg: #f4ecd9;
+  --warning-text: #806525;
+
+  --danger-bg: #f4e5e3;
+  --danger-text: #8a4942;
+
+  --info-bg: #e8eef5;
+  --info-text: #3f5f7d;
+
+  --sans: Arial, Helvetica, sans-serif;
+  --heading: Arial, Helvetica, sans-serif;
+  --mono: Consolas, monospace;
+
+  font-family: var(--sans);
+  line-height: 1.5;
+  font-weight: 400;
+
+  color: var(--text);
+  background: var(--bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+/* =========================================================
+   GLOBAL RESET
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+
+/* =========================================================
+   TYPOGRAPHY
+   ========================================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  color: var(--text-h);
+  font-family: var(--heading);
+}
+
+p {
+  margin: 0;
+}
+
+
+/* =========================================================
+   FORM ELEMENTS
+   ========================================================= */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+input,
+select,
+textarea {
+  color: var(--text);
+}
+
+textarea {
+  resize: vertical;
+}
+
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+
+/* =========================================================
+   ACCESSIBILITY
+   ========================================================= */
+
+:focus-visible {
+  outline: 2px solid #5e967f;
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   SCROLLBARS
+   ========================================================= */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5d0 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #cbd5d0;
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #aebdb6;
+}

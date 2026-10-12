@@ -848,28 +848,22 @@ export default function Requests() {
    * ---------------------------------------------------------
    */
 
-  async function handleDeclareCheckout(
-    request
-  ) {
+  
+  async function handleDeclareCheckout(request) {
     clearMessages()
 
-    const approvedAssetIds =
-      request.items
-        .filter(
-          (item) =>
-            item.item_status ===
-              'REQUESTED' &&
-            item.approval_status ===
-              'APPROVED'
-        )
-        .map(
-          (item) => item.asset_id
-        )
+    const requestId = request.request_id
+
+    const approvedAssetIds = request.items
+      .filter(
+        (item) =>
+          item.item_status === 'REQUESTED' &&
+          item.approval_status === 'APPROVED'
+      )
+      .map((item) => item.asset_id)
 
     const selected =
-      checkoutSelections[
-        request.request_id
-      ] ?? approvedAssetIds
+      checkoutSelections[requestId] ?? approvedAssetIds
 
     if (selected.length === 0) {
       setError(
@@ -878,38 +872,29 @@ export default function Requests() {
       return
     }
 
+    setActionRequestId(requestId)
 
-setActionRequestId(requestId)
-
-try {
-  await apiFetch(
-    `/api/requests/${requestId}/items/decide-all`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        decision,
-        request_item_id: selected,
-        notes:
-          bulkDecisionNotes[requestId]?.trim() || null,
-      }),
-    }
-  )
-
-
-      setSuccess(
-        'Equipment taken successfully.'
-      )
-
-      setCheckoutSelections(
-        (current) => {
-          const next = { ...current }
-          delete next[request.request_id]
-          return next
+    try {
+      await apiFetch(
+        `/api/requests/${requestId}/checkout`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            asset_ids: selected,
+          }),
         }
       )
+
+      setSuccess('Equipment taken successfully.')
+
+      setCheckoutSelections((current) => {
+        const next = { ...current }
+        delete next[requestId]
+        return next
+      })
 
       await loadData()
     } catch (err) {
@@ -926,6 +911,7 @@ try {
       setActionRequestId(null)
     }
   }
+
 
   /*
    * ---------------------------------------------------------

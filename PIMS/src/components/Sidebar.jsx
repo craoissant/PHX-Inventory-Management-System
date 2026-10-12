@@ -13,6 +13,9 @@ const navigation = [
     label: 'Kits',
     path: '/kits',
   },
+  { label: 'Checkout', 
+    path: '/checkout' 
+  },
   {
     label: 'Requests',
     path: '/requests',
@@ -30,19 +33,14 @@ function Sidebar() {
       <div className="sidebar-brand">
 
         <div className="sidebar-logo">
-          PIMS
-        </div>
+       <img src="/phx.png" alt="PHX Logo" />
+       </div>
 
-        <div className="sidebar-brand-text">
-          <strong>
-            PHX Inventory
-          </strong>
-
-          <span>
-            Management System
-          </span>
-        </div>
-
+      </div>
+    
+      <div> <strong>
+        PHX Inventory Management System
+        </strong>
       </div>
 
       <div className="sidebar-section-label">
@@ -68,11 +66,11 @@ function Sidebar() {
       <div className="sidebar-footer">
 
         <span className="sidebar-footer-label">
-          PHOTOGRAPHIX
+          PHX INVENTORY
         </span>
 
         <span className="sidebar-footer-version">
-          Internal System
+          Version 1.0
         </span>
 
       </div>

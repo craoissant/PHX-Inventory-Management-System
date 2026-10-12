@@ -38,7 +38,7 @@
   padding: 26px 18px 20px;
   display: flex;
   flex-direction: column;
-  background: #111614;
+  background: #000000;
   color: #ffffff;
   border-right: 1px solid #202724;
   z-index: 20;
@@ -55,15 +55,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  border-radius: 7px;
-  background: #2f6755;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  overflow: hidden;
+}
+
+.sidebar-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .sidebar-brand-text {
@@ -86,7 +84,7 @@
 .sidebar-section-label {
   margin: 42px 10px 9px;
   color: #68736e;
-  font-size: 10px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -106,7 +104,7 @@
   border-radius: 6px;
   color: #aab3af;
   text-decoration: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   transition:
     background 0.15s ease,
@@ -145,14 +143,14 @@
 
 .sidebar-footer-label {
   color: #9ca7a2;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
 }
 
 .sidebar-footer-version {
   color: #606b66;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 
@@ -182,7 +180,7 @@
 
 .header-system-name {
   color: #24483b;
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -194,7 +192,7 @@
 
 .header-page-label {
   color: #68736e;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .header-user {

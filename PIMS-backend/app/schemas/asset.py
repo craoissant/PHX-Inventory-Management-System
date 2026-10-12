@@ -64,3 +64,9 @@ class AssetMovementResponse(BaseModel):
     performed_by: UUID | None
     notes: str | None
     created_at: datetime
+
+class DirectCheckoutRequest(BaseModel):
+    asset_ids: list[UUID]
+    notes: str | None = None
+
+

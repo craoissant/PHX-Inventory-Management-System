@@ -94,7 +94,7 @@ function Header() {
 
       <div className="header-title">
         <span className="header-system-name">
-          PIMS
+         PHX Inventory Management System
         </span>
 
         <span className="header-divider">
@@ -102,7 +102,7 @@ function Header() {
         </span>
 
         <span className="header-page-label">
-          PHX Inventory Management System
+          Version 1.0
         </span>
       </div>
 

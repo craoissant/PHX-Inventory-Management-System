@@ -14,7 +14,28 @@ def perform_asset_handover(
     reason: str | None = None,
     notes: str | None = None,
     allow_user_checkout: bool = False,
+    allow_direct_checkout: bool = False,
 ):
+
+    if allow_direct_checkout:
+        if performed_role not in {"MANAGER", "ADMIN", "DEVELOPER"}:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission for direct checkout",
+            )
+
+        if to_status != "CHECKED_OUT":
+            raise HTTPException(
+                status_code=400,
+                detail="Direct checkout must use CHECKED_OUT status",
+            )
+
+        if str(to_possession_id) != str(performed_by):
+            raise HTTPException(
+                status_code=403,
+                detail="You can only check out assets to yourself",
+            )
+    
     if performed_role not in {"MANAGER", "ADMIN", "DEVELOPER"}:
         if not (
             performed_role == "USER"
@@ -78,6 +99,12 @@ def perform_asset_handover(
                 status_code=400,
                 detail="Only available assets can be checked out",
             )
+
+        if allow_direct_checkout and from_status != "AVAILABLE":
+            raise HTTPException(
+                status_code=400,
+                detail="Only available assets can be checked out",
+    )
         if str(to_possession_id) != str(performed_by):
             raise HTTPException(
                 status_code=403,
@@ -86,7 +113,8 @@ def perform_asset_handover(
 
     # A normal handover requires an existing physical holder.
     if from_possession_id is None and not (
-        performed_role == "USER" and allow_user_checkout
+        (performed_role == "USER" and allow_user_checkout)
+        or allow_direct_checkout    
     ):
         raise HTTPException(
             status_code=400,
@@ -114,7 +142,7 @@ def perform_asset_handover(
         )
 
     # Prevent meaningless handovers.
-    if str(from_possession_id) == str(to_possession_id):
+    if str(from_possession_id) == str(to_possession_id) and not allow_direct_checkout:
         raise HTTPException(
             status_code=400,
             detail="Asset is already in the possession of this person",

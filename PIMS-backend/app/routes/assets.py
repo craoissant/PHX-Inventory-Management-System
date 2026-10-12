@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import get_current_user
+from fastapi import APIRouter, Depends, HTTPException
+from uuid import UUID
+
 from app.database import get_connection
 from app.schemas.asset import (
     AssetHandoverRequest,
     AssetMovementResponse,
     AssetResponse,
     AssetStatusChangeRequest,
+    DirectCheckoutRequest,
 )
 from app.services.asset_handover import perform_asset_handover
+from app.auth import get_current_user, require_role
 
 
 router = APIRouter(
@@ -31,21 +34,16 @@ def get_assets(current_user=Depends(get_current_user)):
                     a.model,
                     a.asset_type,
                     a.serial_number,
-
                     a.team_id,
                     t.team_code,
                     t.team_name,
-
                     a.kit_id,
                     k.kit_code,
                     k.kit_name,
-
                     a.responsible_person_id,
                     CONCAT(rp.first_name, ' ', rp.last_name),
-
                     a.current_possession_id,
                     CONCAT(cp.first_name, ' ', cp.last_name),
-
                     a.status,
                     a.notes,
                     a.updated_at
@@ -61,7 +59,6 @@ def get_assets(current_user=Depends(get_current_user)):
                 ORDER BY a.asset_code
                 """
             )
-
             rows = cursor.fetchall()
 
     return [
@@ -90,6 +87,7 @@ def get_assets(current_user=Depends(get_current_user)):
         for row in rows
     ]
 
+
 @router.get(
     "/{asset_id}/movements",
     response_model=list[AssetMovementResponse],
@@ -100,7 +98,6 @@ def get_asset_movements(
 ):
     with get_connection() as connection:
         with connection.cursor() as cursor:
-
             cursor.execute(
                 """
                 SELECT 1
@@ -140,7 +137,6 @@ def get_asset_movements(
                 """,
                 (asset_id,),
             )
-
             rows = cursor.fetchall()
 
     return [
@@ -164,6 +160,7 @@ def get_asset_movements(
         for row in rows
     ]
 
+
 @router.post("/{asset_id}/handover")
 def handover_asset(
     asset_id: str,
@@ -172,7 +169,6 @@ def handover_asset(
 ):
     with get_connection() as connection:
         with connection.cursor() as cursor:
-
             result = perform_asset_handover(
                 cursor,
                 asset_id=asset_id,
@@ -191,6 +187,7 @@ def handover_asset(
         "asset_id": asset_id,
         "status": result["to_status"],
     }
+
 
 @router.post("/{asset_id}/status")
 def change_asset_status(
@@ -229,7 +226,6 @@ def change_asset_status(
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
-
             cursor.execute(
                 """
                 SELECT
@@ -241,7 +237,6 @@ def change_asset_status(
                 """,
                 (asset_id,),
             )
-
             asset = cursor.fetchone()
 
             if not asset:
@@ -250,8 +245,7 @@ def change_asset_status(
                     detail="Asset not found",
                 )
 
-            from_status = asset[0]
-            responsible_person_id = asset[1]
+            from_status, responsible_person_id = asset
 
             if (
                 performed_role == "MANAGER"
@@ -282,10 +276,7 @@ def change_asset_status(
                     updated_at = now()
                 WHERE asset_id = %s
                 """,
-                (
-                    request.to_status,
-                    asset_id,
-                ),
+                (request.to_status, asset_id),
             )
 
             cursor.execute(
@@ -319,7 +310,6 @@ def change_asset_status(
                     request.notes,
                 ),
             )
-
             movement_id = cursor.fetchone()[0]
 
         connection.commit()
@@ -328,4 +318,232 @@ def change_asset_status(
         "movement_id": movement_id,
         "asset_id": asset_id,
         "status": request.to_status,
+    }
+
+
+@router.post("/direct-checkout")
+def direct_checkout(
+    request: DirectCheckoutRequest,
+    current_user=Depends(
+        require_role("MANAGER", "ADMIN", "DEVELOPER")
+    ),
+):
+    person_id = current_user["person_id"]
+    role = current_user["system_role"]
+
+    if not request.asset_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Select at least one asset to check out",
+        )
+
+    if len(request.asset_ids) != len(set(request.asset_ids)):
+        raise HTTPException(
+            status_code=400,
+            detail="Duplicate assets are not allowed",
+        )
+
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            # Validate every asset before making any changes.
+            for asset_id in request.asset_ids:
+                cursor.execute(
+                    """
+                    SELECT
+                        a.status,
+                        a.responsible_person_id,
+                        k.assigned_person_id,
+                        k.active,
+                        a.current_possession_id
+                    FROM assets a
+                    JOIN kits k ON k.kit_id = a.kit_id
+                    WHERE a.asset_id = %s
+                    FOR UPDATE OF a, k
+                    """,
+                    (asset_id,),
+                )
+                asset = cursor.fetchone()
+
+                if not asset:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Asset {asset_id} not found",
+                    )
+
+                (
+                    asset_status,
+                    responsible_person_id,
+                    assigned_person_id,
+                    kit_active,
+                    current_possession_id,
+                ) = asset
+
+                if asset_status != "AVAILABLE":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Asset {asset_id} is not available",
+                    )
+
+                if not kit_active:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Asset {asset_id} belongs "
+                            "to an inactive kit"
+                        ),
+                    )
+
+                if role == "MANAGER":
+                    if (
+                        str(assigned_person_id) != person_id
+                        or str(responsible_person_id) != person_id
+                    ):
+                        raise HTTPException(
+                            status_code=403,
+                            detail=(
+                                "Managers can only check out "
+                                "assets from their own kit"
+                            ),
+                        )
+
+            # All assets passed validation. Now record checkout.
+            for asset_id in request.asset_ids:
+                perform_asset_handover(
+                    cursor,
+                    asset_id=asset_id,
+                    to_possession_id=UUID(person_id),
+                    to_status="CHECKED_OUT",
+                    performed_by=person_id,
+                    performed_role=role,
+                    reason="Direct checkout",
+                    notes=request.notes,
+                    allow_direct_checkout=True,
+                )
+
+        connection.commit()
+
+    return {
+        "message": "Assets checked out successfully",
+        "checked_out_asset_ids": request.asset_ids,
+    }
+
+
+@router.post("/direct-return")
+def direct_return(
+    request: DirectCheckoutRequest,
+    current_user=Depends(
+        require_role("MANAGER", "ADMIN", "DEVELOPER")
+    ),
+):
+    person_id = current_user["person_id"]
+    role = current_user["system_role"]
+
+    if not request.asset_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Select at least one asset to return",
+        )
+
+    if len(request.asset_ids) != len(set(request.asset_ids)):
+        raise HTTPException(
+            status_code=400,
+            detail="Duplicate assets are not allowed",
+        )
+
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            # Validate every asset before making any changes.
+            for asset_id in request.asset_ids:
+                cursor.execute(
+                    """
+                    SELECT
+                        a.status,
+                        a.responsible_person_id,
+                        k.assigned_person_id
+                    FROM assets a
+                    JOIN kits k ON k.kit_id = a.kit_id
+                    WHERE a.asset_id = %s
+                    FOR UPDATE OF a, k
+                    """,
+                    (asset_id,),
+                )
+                asset = cursor.fetchone()
+
+                if not asset:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Asset {asset_id} not found",
+                    )
+
+                status, responsible_person_id, assigned_person_id = asset
+
+                if status != "CHECKED_OUT":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Asset {asset_id} is not checked out",
+                    )
+
+                if role == "MANAGER" and (
+                    str(responsible_person_id) != person_id
+                    or str(assigned_person_id) != person_id
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(
+                            "Managers can only return assets "
+                            "from their own kit"
+                        ),
+                    )
+
+            # All assets passed validation. Return them.
+            for asset_id in request.asset_ids:
+                cursor.execute(
+                    """
+                    UPDATE assets
+                    SET
+                        status = 'AVAILABLE',
+                        current_possession_id = NULL,
+                        updated_at = now()
+                    WHERE asset_id = %s
+                    """,
+                    (asset_id,),
+                )
+
+                # STATUS_CHANGE requires from_status and to_status.
+                # Possession is cleared on the asset itself above.
+                cursor.execute(
+                    """
+                    INSERT INTO asset_movements (
+                        asset_id,
+                        movement_type,
+                        from_status,
+                        to_status,
+                        reason,
+                        performed_by,
+                        notes
+                    )
+                    VALUES (
+                        %s,
+                        'STATUS_CHANGE',
+                        'CHECKED_OUT',
+                        'AVAILABLE',
+                        'Direct return',
+                        %s,
+                        %s
+                    )
+                    """,
+                    (
+                        asset_id,
+                        person_id,
+                        request.notes,
+                    ),
+                )
+
+        connection.commit()
+
+    return {
+        "message": (
+            f"{len(request.asset_ids)} asset(s) returned successfully."
+        ),
+        "returned_asset_ids": request.asset_ids,
     }

@@ -2,7 +2,7 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import RLSTest from './pages/RLSTest'
 import AppLayout from './layouts/AppLayout'
-
+import Checkout from './pages/Checkout'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/Assets'
 import AssetDetails from './pages/AssetDetails'
@@ -55,6 +55,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/rls-test" element={<RLSTest />} />
+          <Route path="/checkout" element={<Checkout />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/assets" element={<Assets />} />
           <Route path="/assets/:assetId" element={<AssetDetails />} />

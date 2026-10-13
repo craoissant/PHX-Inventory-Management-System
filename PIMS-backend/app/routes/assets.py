@@ -321,6 +321,7 @@ def change_asset_status(
     }
 
 
+
 @router.post("/direct-checkout")
 def direct_checkout(
     request: DirectCheckoutRequest,
@@ -345,7 +346,8 @@ def direct_checkout(
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
-            # Validate every asset before making any changes.
+
+            # 1. Validate every asset before changing anything.
             for asset_id in request.asset_ids:
                 cursor.execute(
                     """
@@ -353,8 +355,7 @@ def direct_checkout(
                         a.status,
                         a.responsible_person_id,
                         k.assigned_person_id,
-                        k.active,
-                        a.current_possession_id
+                        k.active
                     FROM assets a
                     JOIN kits k ON k.kit_id = a.kit_id
                     WHERE a.asset_id = %s
@@ -362,6 +363,7 @@ def direct_checkout(
                     """,
                     (asset_id,),
                 )
+
                 asset = cursor.fetchone()
 
                 if not asset:
@@ -375,7 +377,6 @@ def direct_checkout(
                     responsible_person_id,
                     assigned_person_id,
                     kit_active,
-                    current_possession_id,
                 ) = asset
 
                 if asset_status != "AVAILABLE":
@@ -393,37 +394,67 @@ def direct_checkout(
                         ),
                     )
 
-                if role == "MANAGER":
-                    if (
-                        str(assigned_person_id) != person_id
-                        or str(responsible_person_id) != person_id
-                    ):
-                        raise HTTPException(
-                            status_code=403,
-                            detail=(
-                                "Managers can only check out "
-                                "assets from their own kit"
-                            ),
-                        )
+                if role == "MANAGER" and (
+                    str(assigned_person_id) != person_id
+                    or str(responsible_person_id) != person_id
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(
+                            "Managers can only check out "
+                            "assets from their own kit"
+                        ),
+                    )
 
-            # All assets passed validation. Now record checkout.
+            # 2. Directly update each asset and record its status change.
             for asset_id in request.asset_ids:
-                perform_asset_handover(
-                    cursor,
-                    asset_id=asset_id,
-                    to_possession_id=UUID(person_id),
-                    to_status="CHECKED_OUT",
-                    performed_by=person_id,
-                    performed_role=role,
-                    reason="Direct checkout",
-                    notes=request.notes,
-                    allow_direct_checkout=True,
+                cursor.execute(
+                    """
+                    UPDATE assets
+                    SET
+                        status = 'CHECKED_OUT',
+                        current_possession_id = %s,
+                        updated_at = now()
+                    WHERE asset_id = %s
+                    """,
+                    (UUID(person_id), asset_id),
+                )
+
+                cursor.execute(
+                    """
+                    INSERT INTO asset_movements (
+                        asset_id,
+                        movement_type,
+                        from_status,
+                        to_status,
+                        reason,
+                        performed_by,
+                        notes
+                    )
+                    VALUES (
+                        %s,
+                        'STATUS_CHANGE',
+                        'AVAILABLE',
+                        'CHECKED_OUT',
+                        'Direct checkout',
+                        %s,
+                        %s
+                    )
+                    """,
+                    (
+                        asset_id,
+                        person_id,
+                        request.notes,
+                    ),
                 )
 
         connection.commit()
 
     return {
-        "message": "Assets checked out successfully",
+        "message": (
+            f"{len(request.asset_ids)} asset(s) "
+            "checked out successfully."
+        ),
         "checked_out_asset_ids": request.asset_ids,
     }
 

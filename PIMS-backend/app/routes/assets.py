@@ -458,7 +458,7 @@ def direct_checkout(
         "checked_out_asset_ids": request.asset_ids,
     }
 
-
+    
 @router.post("/direct-return")
 def direct_return(
     request: DirectCheckoutRequest,

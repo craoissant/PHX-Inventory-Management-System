@@ -1,3 +1,4 @@
+
 /* =========================================================
    PIMS GLOBAL APPLICATION STYLES
    ========================================================= */
@@ -24,20 +25,19 @@
   padding: 32px;
 }
 
-
 /* =========================================================
    SIDEBAR
    ========================================================= */
 
 .sidebar {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0 auto 0 0;
   width: 248px;
   height: 100vh;
-  padding: 26px 18px 20px;
+  padding: 22px 18px 16px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: #000000;
   color: #ffffff;
   border-right: 1px solid #202724;
@@ -49,6 +49,7 @@
   align-items: center;
   gap: 12px;
   padding: 0 8px;
+  flex-shrink: 0;
 }
 
 .sidebar-logo {
@@ -81,34 +82,45 @@
   font-size: 11px;
 }
 
+.sidebar-system-name {
+  flex-shrink: 0;
+}
+
 .sidebar-section-label {
-  margin: 42px 10px 9px;
+  margin: 0;
+  padding: 5px 10px 3px;
   color: #68736e;
-  font-size: 15px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
 
 .sidebar-nav {
   display: flex;
+  flex: 1;
+  min-height: 0;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
+  margin-top: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #39413d transparent;
 }
 
 .sidebar-nav a {
   position: relative;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 36px;
+  padding: 8px 12px;
   border-radius: 6px;
   color: #aab3af;
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .sidebar-nav a:hover {
@@ -134,11 +146,13 @@
 
 .sidebar-footer {
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 3px;
   margin-top: auto;
-  padding: 16px 10px 4px;
+  padding: 12px 10px 4px;
   border-top: 1px solid #252c29;
+  background: #000000;
 }
 
 .sidebar-footer-label {
@@ -153,7 +167,6 @@
   font-size: 12px;
 }
 
-
 /* =========================================================
    HEADER
    ========================================================= */
@@ -167,6 +180,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20px;
   border-bottom: 1px solid #dfe5e2;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(8px);
@@ -174,6 +188,7 @@
 
 .header-title {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 10px;
 }
@@ -196,7 +211,9 @@
 }
 
 .header-user {
+  position: relative;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 10px;
 }
@@ -225,13 +242,67 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  border: 1px solid #cbd8d2;
+  flex-shrink: 0;
+  border: none;
   border-radius: 50%;
   background: #edf3f0;
   color: #2f6755;
   font-size: 11px;
   font-weight: 700;
+  cursor: pointer;
 }
+
+.header-account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 220px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+  z-index: 1000;
+}
+
+.header-account-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.header-account-details strong {
+  font-size: 14px;
+}
+
+.header-account-details span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.header-account-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: #e5e7eb;
+}
+
+.header-logout-button {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #374151;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.header-logout-button:hover {
+  background: #f3f4f6;
+}
+
 
 
 /* =========================================================
@@ -1760,63 +1831,3 @@
   }
 }
 
-.header-user {
-  position: relative;
-}
-
-.header-user-avatar {
-  cursor: pointer;
-  border: none;
-  font: inherit;
-}
-
-.header-account-menu {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 220px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
-  padding: 8px;
-  z-index: 1000;
-}
-
-.header-account-details {
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.header-account-details strong {
-  font-size: 14px;
-}
-
-.header-account-details span {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.header-account-divider {
-  height: 1px;
-  background: #e5e7eb;
-  margin: 4px 0;
-}
-
-.header-logout-button {
-  width: 100%;
-  border: none;
-  background: transparent;
-  text-align: left;
-  padding: 10px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font: inherit;
-  color: #374151;
-}
-
-.header-logout-button:hover {
-  background: #f3f4f6;
-}

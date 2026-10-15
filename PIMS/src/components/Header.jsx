@@ -1,10 +1,42 @@
+
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+
+const pageTitles = {
+  '/dashboard': 'Dashboard',
+  '/assets': 'Assets',
+  '/kits': 'Kits',
+  '/checkout': 'Checkout',
+  '/requests': 'Requests',
+  '/people': 'People',
+  '/rls-test': 'RLS Test',
+}
+
+function getPageTitle(pathname) {
+  if (pageTitles[pathname]) {
+    return pageTitles[pathname]
+  }
+
+  if (pathname.startsWith('/assets/')) {
+    return 'Asset Details'
+  }
+
+  if (pathname.startsWith('/kits/')) {
+    return 'Kit Details'
+  }
+
+  return 'PHX Inventory'
+}
 
 function Header() {
   const [person, setPerson] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
+
   const menuRef = useRef(null)
+  const location = useLocation()
+
+  const pageTitle = getPageTitle(location.pathname)
 
   useEffect(() => {
     async function loadPerson() {
@@ -30,10 +62,7 @@ function Header() {
         .single()
 
       if (error) {
-        console.error(
-          'Failed to load header user:',
-          error
-        )
+        console.error('Failed to load header user:', error)
         return
       }
 
@@ -53,10 +82,7 @@ function Header() {
       }
     }
 
-    document.addEventListener(
-      'mousedown',
-      handleClickOutside
-    )
+    document.addEventListener('mousedown', handleClickOutside)
 
     return () => {
       document.removeEventListener(
@@ -65,6 +91,10 @@ function Header() {
       )
     }
   }, [])
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
 
   async function handleLogout() {
     const { error } = await supabase.auth.signOut()
@@ -75,69 +105,59 @@ function Header() {
   }
 
   const fullName = person
-    ? `${person.first_name ?? ''} ${
-        person.last_name ?? ''
-      }`.trim()
+    ? `${person.first_name ?? ''} ${person.last_name ?? ''}`.trim()
     : 'User'
 
   const role = person?.system_role
     ? person.system_role
         .replaceAll('_', ' ')
         .toLowerCase()
-        .replace(/\b\w/g, (char) =>
-          char.toUpperCase()
-        )
+        .replace(/\b\w/g, (char) => char.toUpperCase())
     : 'User'
+
+  const initials =
+    fullName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((name) => name.charAt(0).toUpperCase())
+      .join('') || 'U'
+
+  const teamCode = person?.team?.team_code
 
   return (
     <header className="header">
-
       <div className="header-title">
         <span className="header-system-name">
-         PHX Inventory Management System
+          PHX Inventory
         </span>
 
-        <span className="header-divider">
-          /
-        </span>
+        <span className="header-divider">/</span>
 
         <span className="header-page-label">
-          Version 1.0
+          {pageTitle}
         </span>
       </div>
 
-      <div
-        className="header-user"
-        ref={menuRef}
-      >
+      <div className="header-user" ref={menuRef}>
         <div className="header-user-info">
           <strong>{fullName}</strong>
 
           <span>
-            {person?.team?.team_code
-              ? `${person.team.team_code} · `
-              : ''}
+            {teamCode ? `${teamCode} · ` : ''}
             {role}
           </span>
         </div>
 
         <button
           className="header-user-avatar"
-          onClick={() =>
-            setMenuOpen((open) => !open)
-          }
+          onClick={() => setMenuOpen((open) => !open)}
           title="Account menu"
           aria-label="Open account menu"
+          aria-expanded={menuOpen}
           type="button"
         >
-          {fullName
-            .split(' ')
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((name) =>
-              name.charAt(0).toUpperCase()
-            )
-            .join('')}
+          {initials}
         </button>
 
         {menuOpen && (
@@ -146,9 +166,7 @@ function Header() {
               <strong>{fullName}</strong>
 
               <span>
-                {person?.team?.team_code
-                  ? `${person.team.team_code} · `
-                  : ''}
+                {teamCode ? `${teamCode} · ` : ''}
                 {role}
               </span>
             </div>
@@ -165,7 +183,6 @@ function Header() {
           </div>
         )}
       </div>
-
     </header>
   )
 }

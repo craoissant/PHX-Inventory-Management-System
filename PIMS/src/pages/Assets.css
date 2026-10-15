@@ -71,7 +71,7 @@
 .search-wrapper {
   position: relative;
   width: 100%;
-  margin-bottom: 9px;
+  margin-bottom: 25px;
 }
 
 .search-icon {
@@ -80,7 +80,7 @@
   left: 14px;
   transform: translateY(-50%);
   color: #8a958f;
-  font-size: 18px;
+  font-size: 35px;
   pointer-events: none;
 }
 
@@ -94,7 +94,7 @@
   outline: none;
   background: #ffffff;
   color: #34413b;
-  font-size: 12px;
+  font-size: 15px;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
@@ -107,7 +107,7 @@
 
 .search-wrapper input:focus {
   border-color: #789b8d;
-  box-shadow: 0 0 0 2px rgba(31, 92, 69, 0.07);
+  box-shadow: 0 0 0 5px rgba(31, 92, 69, 0.07);
 }
 
 .filter-row {
@@ -125,13 +125,13 @@
   outline: none;
   background: #ffffff;
   color: #4b5952;
-  font-size: 11px;
+  font-size: 15px;
   cursor: pointer;
 }
 
 .filter-row select:focus {
   border-color: #789b8d;
-  box-shadow: 0 0 0 2px rgba(31, 92, 69, 0.07);
+  box-shadow: 0 0 0 5px rgba(31, 92, 69, 0.07);
 }
 
 .clear-filters {
@@ -140,9 +140,9 @@
   border: none;
   background: transparent;
   color: #718079;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 600;
-  cursor: pointer;
+  cursor: pointer
 }
 
 .clear-filters:hover {
@@ -177,7 +177,7 @@
 .assets-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .assets-table th {
@@ -221,7 +221,7 @@
 .asset-code {
   color: #2f5e4c;
   font-family: Consolas, monospace;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.025em;
 }
@@ -237,7 +237,7 @@
   justify-content: center;
   padding: 5px 9px;
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.045em;
   text-transform: uppercase;

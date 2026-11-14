@@ -1,7 +1,8 @@
+
 import os
 
-import psycopg
 from dotenv import load_dotenv
+from psycopg_pool import ConnectionPool
 
 
 load_dotenv()
@@ -14,8 +15,15 @@ if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set in the .env file")
 
 
+pool = ConnectionPool(
+    conninfo=DATABASE_URL,
+    min_size=1,
+    max_size=5,
+    timeout=10,
+    kwargs={"connect_timeout": 10},
+    open=True,
+)
+
+
 def get_connection():
-    return psycopg.connect(
-        DATABASE_URL,
-        connect_timeout=10,
-    )
+    return pool.connection()

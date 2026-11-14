@@ -5,3 +5,4 @@ python-dotenv
 PyJWT
 cryptography
 httpx
+psycopg_pool

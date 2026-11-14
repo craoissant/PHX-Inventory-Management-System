@@ -17,7 +17,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:5174",
-        "https://phx-inventory.onrender.com",
+        "https://phx-inventory.vercel.app",
         "http://localhost:5175",
 
     ],

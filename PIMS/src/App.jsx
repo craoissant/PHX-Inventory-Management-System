@@ -53,7 +53,7 @@ function App() {
       {/* Protected application */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/rls-test" element={<RLSTest />} />
+          
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/assets" element={<Assets />} />

@@ -45,7 +45,7 @@ function Login() {
 
         <div className="login-heading">
           <h1>Welcome back</h1>
-          <p>Sign in to access PIMS.</p>
+          <p>Sign in to access the inventory.</p>
         </div>
 
         <form className="login-form" onSubmit={handleLogin}>

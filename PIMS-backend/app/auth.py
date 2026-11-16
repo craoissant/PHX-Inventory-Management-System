@@ -1,4 +1,6 @@
+
 import os
+import time
 from uuid import UUID
 
 import jwt
@@ -31,10 +33,19 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     token = credentials.credentials
-    print("AUTH: token received")
+
+    total_start = time.perf_counter()
+
+    # 1. Retrieve signing key
+    jwks_start = time.perf_counter()
 
     try:
         signing_key = _jwks_client.get_signing_key_from_jwt(token)
+
+        jwks_time = time.perf_counter() - jwks_start
+
+        # 2. Verify JWT
+        jwt_start = time.perf_counter()
 
         payload = jwt.decode(
             token,
@@ -43,6 +54,8 @@ def get_current_user(
             issuer=SUPABASE_ISSUER,
             audience="authenticated",
         )
+
+        jwt_time = time.perf_counter() - jwt_start
 
     except jwt.PyJWTError as error:
         print("JWT validation error:", type(error).__name__, str(error))
@@ -68,7 +81,18 @@ def get_current_user(
             detail="Invalid user ID in authentication token",
         )
 
-    with get_connection() as connection:
+    # 3. Acquire database connection
+    connection_start = time.perf_counter()
+
+    connection_context = get_connection()
+
+    with connection_context as connection:
+
+        connection_time = time.perf_counter() - connection_start
+
+        # 4. Execute profile query
+        query_start = time.perf_counter()
+
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -86,6 +110,19 @@ def get_current_user(
             )
 
             person = cursor.fetchone()
+
+        query_time = time.perf_counter() - query_start
+
+    total_time = time.perf_counter() - total_start
+
+    print(
+        "AUTH_TIMING | "
+        f"JWKS: {jwks_time * 1000:.2f}ms | "
+        f"JWT: {jwt_time * 1000:.2f}ms | "
+        f"DB connection: {connection_time * 1000:.2f}ms | "
+        f"Profile query: {query_time * 1000:.2f}ms | "
+        f"Total: {total_time * 1000:.2f}ms"
+    )
 
     if not person:
         raise HTTPException(

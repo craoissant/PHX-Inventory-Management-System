@@ -227,7 +227,7 @@ def _apply_item_decision(
 # GET ALL REQUESTS
 # ============================================================
 
-@router.get("")
+@router.get("", response_model=list[RequestDetailResponse])
 def get_requests(
     current_user=Depends(get_current_user),
 ):
@@ -251,6 +251,9 @@ def get_requests(
                         r.needed_until,
                         r.request_type,
                         r.requested_kit_id,
+                        r.decided_by,
+                        r.decided_at,
+                        r.decision_notes,
                         r.created_at,
                         r.updated_at
                     FROM requests r
@@ -274,6 +277,9 @@ def get_requests(
                         r.needed_until,
                         r.request_type,
                         r.requested_kit_id,
+                        r.decided_by,
+                        r.decided_at,
+                        r.decision_notes,
                         r.created_at,
                         r.updated_at
                     FROM requests r
@@ -299,6 +305,9 @@ def get_requests(
                         r.needed_until,
                         r.request_type,
                         r.requested_kit_id,
+                        r.decided_by,
+                        r.decided_at,
+                        r.decision_notes,
                         r.created_at,
                         r.updated_at
                     FROM requests r
@@ -337,23 +346,106 @@ def get_requests(
                     detail="Invalid system role",
                 )
 
-            rows = cursor.fetchall()
+            request_rows = cursor.fetchall()
+
+            if not request_rows:
+                return []
+
+            request_ids = [row[0] for row in request_rows]
+
+            placeholders = ", ".join(
+                ["%s"] * len(request_ids)
+            )
+
+            cursor.execute(
+                f"""
+                SELECT
+                    ri.request_id,
+                    ri.request_item_id,
+                    ri.asset_id,
+                    a.asset_code,
+                    a.name,
+                    ri.item_status,
+                    ri.notes,
+                    ri.taken_at,
+                    ri.taken_verified_by,
+                    ri.taken_verified_at,
+                    ri.returned_at,
+                    ri.return_verified_by,
+                    ri.return_verified_at,
+                    ri.approval_status,
+                    ri.approved_by,
+                    ri.approved_at,
+                    ri.decision_notes,
+                    a.responsible_person_id,
+                    CONCAT(
+                        rp.first_name,
+                        ' ',
+                        rp.last_name
+                    ) AS responsible_person_name
+                FROM request_items ri
+                JOIN assets a
+                    ON a.asset_id = ri.asset_id
+                LEFT JOIN people rp
+                    ON rp.person_id = a.responsible_person_id
+                WHERE ri.request_id IN ({placeholders})
+                ORDER BY ri.request_id, a.asset_code
+                """,
+                tuple(request_ids),
+            )
+
+            item_rows = cursor.fetchall()
+
+    items_by_request = {}
+
+    for row in item_rows:
+        request_id = row[0]
+
+        if request_id not in items_by_request:
+            items_by_request[request_id] = []
+
+        items_by_request[request_id].append(
+            RequestDetailItemResponse(
+                request_item_id=row[1],
+                asset_id=row[2],
+                asset_code=row[3],
+                asset_name=row[4],
+                item_status=row[5],
+                notes=row[6],
+                taken_at=row[7],
+                taken_verified_by=row[8],
+                taken_verified_at=row[9],
+                returned_at=row[10],
+                return_verified_by=row[11],
+                return_verified_at=row[12],
+                approval_status=row[13],
+                approved_by=row[14],
+                approved_at=row[15],
+                decision_notes=row[16],
+                responsible_person_id=row[17],
+                responsible_person_name=row[18],
+            )
+        )
 
     return [
-        {
-            "request_id": row[0],
-            "requested_by": row[1],
-            "requester_name": f"{row[2]} {row[3]}",
-            "status": row[4],
-            "purpose": row[5],
-            "needed_from": row[6],
-            "needed_until": row[7],
-            "request_type": row[8],
-            "requested_kit_id": row[9],
-            "created_at": row[10],
-            "updated_at": row[11],
-        }
-        for row in rows
+        RequestDetailResponse(
+            request_id=row[0],
+            requested_by=row[1],
+            requester_name=f"{row[2]} {row[3]}",
+            status=row[4],
+            purpose=row[5],
+            needed_from=row[6],
+            needed_until=row[7],
+            request_type=row[8],
+            requested_kit_id=row[9],
+            decided_by=row[10],
+            decided_at=row[11],
+            decision_notes=row[12],
+            created_at=row[13],
+            updated_at=row[14],
+            items=items_by_request.get(row[0], []),
+        )
+        for row in request_rows
     ]
 
 

@@ -7,6 +7,7 @@ import Assets from './pages/Assets'
 import AssetDetails from './pages/AssetDetails'
 import Kits from './pages/Kits'
 import Requests from './pages/Requests'
+import Approval from './pages/Approval'
 import People from './pages/People'
 import Login from './pages/Login'
 import KitDetail from './pages/KitDetails'
@@ -61,6 +62,7 @@ function App() {
           <Route path="/kits" element={<Kits />} />
           <Route path="/kits/:kitId" element={<KitDetail />} />
           <Route path="/requests" element={<Requests />} />
+          <Route path="/approvals" element={<Approval />} />
           <Route path="/people" element={<People />} />
         </Route>
       </Route>

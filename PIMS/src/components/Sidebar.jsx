@@ -1,5 +1,7 @@
 
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { canReviewRequests } from '../lib/requestReview'
 
 const sections = [
   {
@@ -19,7 +21,6 @@ const sections = [
     label: 'OPERATIONS',
     items: [
       { label: 'Checkout', path: '/checkout' },
-      { label: 'Requests', path: '/requests' },
     ],
   },
   {
@@ -31,6 +32,8 @@ const sections = [
 ]
 
 function Sidebar() {
+  const { pimsUser } = useAuth()
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -44,6 +47,14 @@ function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
+        <NavLink to="/requests" className="sidebar-primary-link">
+          Requests
+        </NavLink>
+        {canReviewRequests(pimsUser) && (
+          <NavLink to="/approvals" className="sidebar-primary-link">
+            Approvals
+          </NavLink>
+        )}
         {sections.map((section) => (
           <div className="sidebar-section" key={section.label}>
             <div className="sidebar-section-label">

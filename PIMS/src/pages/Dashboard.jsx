@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { apiFetch } from '../lib/api'
+import { canReviewRequests, getApprovalQueues } from '../lib/requestReview'
 import { supabase } from '../lib/supabase'
 
 const STATUS_ORDER = [
@@ -86,7 +89,137 @@ function getMovementDescription(movement) {
   }
 }
 
+function RequestQueue({ title, requests, emptyMessage }) {
+  return (
+    <section className="dashboard-card">
+      <div className="dashboard-card-header">
+        <h2>{title}</h2>
+        <span className="dashboard-queue-count">{requests.length}</span>
+      </div>
+      {requests.length === 0 ? (
+        <p className="dashboard-empty">{emptyMessage}</p>
+      ) : (
+        <ul className="dashboard-request-list dashboard-queue-list">
+          {requests.slice(0, 5).map((request) => (
+            <li className="dashboard-request-row" key={request.request_id}>
+              <div>
+                <strong>{request.requester_name}</strong>
+                <small>{formatDate(request.created_at)}</small>
+              </div>
+              <div><span>{request.purpose || 'No purpose provided'}</span></div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function DashboardRequestLinks({ reviewCount }) {
+  return (
+    <nav className="dashboard-request-links" aria-label="Equipment requests">
+      <Link to="/requests">My Requests <span aria-hidden="true">→</span></Link>
+      {reviewCount !== undefined && (
+        <Link to="/approvals">
+          Approvals
+          {reviewCount > 0 && (
+            <span className="dashboard-review-badge">
+              <span className="dashboard-review-dot" aria-hidden="true" />
+              {reviewCount} to review
+            </span>
+          )}
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
+    </nav>
+  )
+}
+
+function ManagerDashboard({ person }) {
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [refreshCount, setRefreshCount] = useState(0)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadRequests() {
+      setLoading(true)
+      setError('')
+      try {
+        const data = await apiFetch('/api/requests', { signal: controller.signal })
+        if (!controller.signal.aborted) setRequests(data)
+      } catch {
+        if (!controller.signal.aborted) setError('Unable to load requests. Try refreshing.')
+      } finally {
+        if (!controller.signal.aborted) setLoading(false)
+      }
+    }
+
+    loadRequests()
+    return () => controller.abort()
+  }, [refreshCount])
+
+  const queues = getApprovalQueues(person, requests)
+  const reviewCount = new Set(
+    [...queues.pending, ...queues.returns].map((request) => request.request_id)
+  ).size
+
+  return (
+    <div className="dashboard-page">
+      <div className="dashboard-header">
+        <h1>Dashboard</h1>
+        <button
+          type="button"
+          className="dashboard-refresh"
+          disabled={loading}
+          onClick={() => setRefreshCount((count) => count + 1)}
+        >
+          Refresh
+        </button>
+      </div>
+
+      <DashboardRequestLinks reviewCount={reviewCount} />
+
+      {loading ? (
+        <div className="dashboard-state" role="status">Loading requests…</div>
+      ) : error ? (
+        <div className="dashboard-state dashboard-error" role="alert">{error}</div>
+      ) : (
+        <div className="dashboard-grid">
+          <RequestQueue
+            title="Requests pending"
+            requests={requests.filter((request) => request.status === 'PENDING')}
+            emptyMessage="No pending requests."
+          />
+          <RequestQueue
+            title="Requests approved"
+            requests={requests.filter((request) => request.status === 'APPROVED')}
+            emptyMessage="No approved requests."
+          />
+          <p className="dashboard-subtitle dashboard-card-wide">
+            Total requests: {requests.length}
+          </p>
+        </div>
+      )}
+
+      <div className="dashboard-inventory-section">
+        <InventoryDashboard embedded refreshCount={refreshCount} />
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
+  const { pimsUser } = useAuth()
+
+  return canReviewRequests(pimsUser)
+    ? <ManagerDashboard key={pimsUser.person_id} person={pimsUser} />
+    : <InventoryDashboard />
+}
+
+function InventoryDashboard({ embedded = false, refreshCount = 0 }) {
   const [assets, setAssets] = useState([])
   const [kits, setKits] = useState([])
   const [requests, setRequests] = useState([])
@@ -97,6 +230,7 @@ export default function Dashboard() {
   const [error, setError] = useState('')
 
   async function loadDashboard() {
+    setRefreshing(true)
     try {
       setError('')
 
@@ -151,7 +285,7 @@ export default function Dashboard() {
             ascending: true,
           }),
 
-        supabase
+        embedded ? { data: [] } : supabase
           .from('requests')
           .select(`
             request_id,
@@ -268,12 +402,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboard()
-  }, [])
-
-  function handleRefresh() {
-    setRefreshing(true)
-    loadDashboard()
-  }
+  }, [refreshCount, embedded])
 
   const totalAssets = assets.length
 
@@ -334,7 +463,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="dashboard-page">
+      <div className={embedded ? undefined : "dashboard-page"}>
         <div className="dashboard-state">
           Loading dashboard...
         </div>
@@ -344,7 +473,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="dashboard-page">
+      <div className={embedded ? undefined : "dashboard-page"}>
         <div className="dashboard-state dashboard-error">
           <strong>
             Unable to load dashboard
@@ -354,7 +483,7 @@ export default function Dashboard() {
 
           <button
             type="button"
-            onClick={handleRefresh}
+            onClick={loadDashboard}
           >
             Try again
           </button>
@@ -364,35 +493,41 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="dashboard-page">
+    <div className={embedded ? undefined : "dashboard-page"}>
 
-      <div className="dashboard-header">
+      {!embedded && (
+        <>
+          <div className="dashboard-header">
 
-        <div>
-          <p className="dashboard-eyebrow">
-            PHX INVENTORY MANAGEMENT SYSTEM
-          </p>
+            <div>
+              <p className="dashboard-eyebrow">
+                PHX INVENTORY MANAGEMENT SYSTEM
+              </p>
 
-          <h1>Dashboard</h1>
+              <h1>Dashboard</h1>
 
-          <p className="dashboard-subtitle">
-            Current inventory, operational status,
-            and recent activity.
-          </p>
-        </div>
+              <p className="dashboard-subtitle">
+                Current inventory, operational status,
+                and recent activity.
+              </p>
+            </div>
 
-        <button
-          type="button"
-          className="dashboard-refresh"
-          onClick={handleRefresh}
-          disabled={refreshing}
-        >
-          {refreshing
-            ? 'Refreshing...'
-            : 'Refresh'}
-        </button>
+            <button
+              type="button"
+              className="dashboard-refresh"
+              onClick={loadDashboard}
+              disabled={refreshing}
+            >
+              {refreshing
+                ? 'Refreshing...'
+                : 'Refresh'}
+            </button>
 
-      </div>
+          </div>
+
+          <DashboardRequestLinks />
+        </>
+      )}
 
       <div className="dashboard-stat-grid">
 
@@ -537,100 +672,102 @@ export default function Dashboard() {
 
         </section>
 
-        <section className="dashboard-card dashboard-card-wide">
+        {!embedded && (
+          <section className="dashboard-card dashboard-card-wide">
 
-          <div className="dashboard-card-header">
+            <div className="dashboard-card-header">
 
-            <div>
-              <p className="dashboard-card-eyebrow">
-                REQUESTS
-              </p>
+              <div>
+                <p className="dashboard-card-eyebrow">
+                  REQUESTS
+                </p>
 
-              <h2>Request Queue</h2>
+                <h2>Request Queue</h2>
+              </div>
+
+              <Link to="/requests">
+                View Requests
+              </Link>
+
             </div>
 
-            <Link to="/requests">
-              View Requests
-            </Link>
+            <div className="dashboard-request-summary">
 
-          </div>
+              <div>
+                <span>Pending</span>
+                <strong>
+                  {pendingRequests.length}
+                </strong>
+              </div>
 
-          <div className="dashboard-request-summary">
+              <div>
+                <span>Approved</span>
+                <strong>
+                  {approvedRequests.length}
+                </strong>
+              </div>
 
-            <div>
-              <span>Pending</span>
-              <strong>
-                {pendingRequests.length}
-              </strong>
+              <div>
+                <span>Total Requests</span>
+                <strong>
+                  {requests.length}
+                </strong>
+              </div>
+
             </div>
 
-            <div>
-              <span>Approved</span>
-              <strong>
-                {approvedRequests.length}
-              </strong>
-            </div>
+            {pendingRequests.length === 0 ? (
+              <div className="dashboard-empty">
+                No pending requests.
+              </div>
+            ) : (
+              <div className="dashboard-request-list">
 
-            <div>
-              <span>Total Requests</span>
-              <strong>
-                {requests.length}
-              </strong>
-            </div>
+                {pendingRequests
+                  .slice(0, 5)
+                  .map((request) => (
+                    <div
+                      key={request.request_id}
+                      className="dashboard-request-row"
+                    >
 
-          </div>
+                      <div>
+                        <strong>
+                          Request #
+                          {request.request_id.slice(
+                            0,
+                            8
+                          )}
+                        </strong>
 
-          {pendingRequests.length === 0 ? (
-            <div className="dashboard-empty">
-              No pending requests.
-            </div>
-          ) : (
-            <div className="dashboard-request-list">
+                        <span>
+                          {formatPerson(
+                            request.requester
+                          )}
+                        </span>
+                      </div>
 
-              {pendingRequests
-                .slice(0, 5)
-                .map((request) => (
-                  <div
-                    key={request.request_id}
-                    className="dashboard-request-row"
-                  >
+                      <div>
+                        <span>
+                          {request.purpose ||
+                            'No purpose provided'}
+                        </span>
 
-                    <div>
-                      <strong>
-                        Request #
-                        {request.request_id.slice(
-                          0,
-                          8
-                        )}
-                      </strong>
+                        <small>
+                          {formatDate(
+                            request.created_at
+                          )}
+                        </small>
+                      </div>
 
-                      <span>
-                        {formatPerson(
-                          request.requester
-                        )}
-                      </span>
                     </div>
+                  ))}
 
-                    <div>
-                      <span>
-                        {request.purpose ||
-                          'No purpose provided'}
-                      </span>
+              </div>
+            )}
 
-                      <small>
-                        {formatDate(
-                          request.created_at
-                        )}
-                      </small>
-                    </div>
-
-                  </div>
-                ))}
-
-            </div>
-          )}
-
-        </section>
+          </section>
+        )}
 
         <section className="dashboard-card dashboard-card-wide">
 

@@ -2,7 +2,7 @@
   --text: #4f5a55;
   --text-h: #18201c;
 
-  --bg: #f5f7f6;
+  --bg: #f2f6f3;
   --white: #ffffff;
 
   --border: #dfe5e2;
@@ -25,9 +25,13 @@
   --info-bg: #e8eef5;
   --info-text: #3f5f7d;
 
-  --sans: Arial, Helvetica, sans-serif;
-  --heading: Arial, Helvetica, sans-serif;
+  --sans: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --heading: var(--sans);
   --mono: Consolas, monospace;
+  --panel-radius: 16px;
+  --panel-shadow: 0 3px 12px rgba(25, 55, 44, 0.05);
+  --raised-shadow: 0 8px 22px rgba(25, 55, 44, 0.1);
+  --motion-fast: 160ms ease;
 
   font-family: var(--sans);
   line-height: 1.5;
@@ -137,7 +141,7 @@ a {
    ========================================================= */
 
 :focus-visible {
-  outline: 2px solid #5e967f;
+  outline: 2px solid #398669;
   outline-offset: 2px;
 }
 

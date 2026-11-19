@@ -55,24 +55,58 @@
   border: 1px solid #bdd4b4;
 }
 
+.my-requests-page {
+  max-width: 1000px;
+}
+
+.request-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 .request-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 28px;
-  align-items: start;
 }
 
-.request-main-column,
 .request-create-panel {
   min-width: 0;
-}
-
-.request-create-panel {
-  position: sticky;
-  top: 24px;
   border: 1px solid #ddd;
   border-radius: 12px;
   background: #fff;
+}
+
+.request-form {
+  display: grid;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.request-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.request-form legend {
+  padding: 0;
+  color: #30443b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#request-history {
+  scroll-margin-top: 100px;
+}
+
+@media (min-width: 1100px) {
+  .request-form {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    column-gap: 32px;
+  }
 }
 
 .request-create-inner {
@@ -492,15 +526,6 @@
   .requests-page {
     padding: 22px;
   }
-
-  .request-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .request-create-panel {
-    position: static;
-    order: -1;
-  }
 }
 
 @media (max-width: 680px) {
@@ -524,6 +549,10 @@
     flex: 1;
   }
 
+  .request-create-inner {
+    padding: 16px;
+  }
+
   .request-date-grid {
     grid-template-columns: 1fr;
   }
@@ -536,4 +565,25 @@
   .request-item-meta {
     flex-wrap: wrap;
   }
+}
+.approval-queues {
+  display: grid;
+  gap: 24px;
+}
+
+.approval-notes {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.approval-notes textarea {
+  width: 100%;
+  max-width: 560px;
+  padding: 8px;
+  border: 1px solid #b7cbc1;
+  border-radius: 6px;
+  font: inherit;
 }

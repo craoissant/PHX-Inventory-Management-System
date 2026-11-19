@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '../lib/api'
 import './Requests.css'
 
-const MANAGEMENT_ROLES = ['MANAGER', 'ADMIN', 'DEVELOPER']
 
 function formatStatus(status) {
   if (!status) return 'Unknown'
@@ -47,19 +46,12 @@ function getStatusClass(status) {
 }
 
 function getAssetDisplayName(asset) {
-  if (!asset) return 'Unknown asset'
+  return asset?.name || asset?.asset_code || 'Unknown asset'
+}
 
-  const parts = [asset.asset_code, asset.name]
-
-  if (asset.make || asset.model) {
-    parts.push(
-      [asset.make, asset.model]
-        .filter(Boolean)
-        .join(' ')
-    )
-  }
-
-  return parts.filter(Boolean).join(' · ')
+function getAssetReference(asset) {
+  const makeAndModel = [asset?.make, asset?.model].filter(Boolean).join(' ')
+  return [asset?.name && asset.asset_code, makeAndModel].filter(Boolean).join(' · ')
 }
 
 function dateStartIso(value) {
@@ -95,8 +87,6 @@ export default function Requests() {
 
   const [checkoutSelections, setCheckoutSelections] = useState({})
   const [returnSelections, setReturnSelections] = useState({})
-  const [verifyReturnSelections, setVerifyReturnSelections] = useState({})
-  const [bulkDecisionSelections, setBulkDecisionSelections] = useState({})
   const [expandedRequests, setExpandedRequests] = useState({})
 
   const [loading, setLoading] = useState(true)
@@ -104,8 +94,6 @@ export default function Requests() {
   const [actionRequestId, setActionRequestId] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
 
-  const [bulkDecisionNotes, setBulkDecisionNotes] = useState({})
-  const [returnNotes, setReturnNotes] = useState({})
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -116,20 +104,6 @@ export default function Requests() {
       return map
     }, {})
   }, [people])
-
-  const assetsById = useMemo(() => {
-    return assets.reduce((map, asset) => {
-      map[asset.asset_id] = asset
-      return map
-    }, {})
-  }, [assets])
-
-  const kitsById = useMemo(() => {
-    return kits.reduce((map, kit) => {
-      map[kit.kit_id] = kit
-      return map
-    }, {})
-  }, [kits])
 
   const availableAssets = useMemo(() => {
     if (!currentPerson) return []
@@ -165,9 +139,7 @@ export default function Requests() {
     })
   }, [availableAssets, assetSearch])
 
-  const currentRole = currentPerson?.system_role || null
 
-  const canManageRequests = MANAGEMENT_ROLES.includes(currentRole)
 
   async function loadData(showRefresh = false) {
     if (showRefresh) {
@@ -325,79 +297,6 @@ export default function Requests() {
 
   /*
    * ---------------------------------------------------------
-   * MANAGER APPROVAL
-   * ---------------------------------------------------------
-   */
-
-  function canDecideItem(request, item) {
-    if (!currentPerson) return false
-
-    if (request.requested_by === currentPerson.person_id) {
-      return false
-    }
-
-    if (request.status !== 'PENDING') {
-      return false
-    }
-
-    if (item.approval_status !== 'PENDING') {
-      return false
-    }
-
-    if (
-      currentRole === 'ADMIN' ||
-      currentRole === 'DEVELOPER'
-    ) {
-      return true
-    }
-
-    if (currentRole === 'MANAGER') {
-      return (
-        item.responsible_person_id === currentPerson.person_id
-      )
-    }
-
-    return false
-  }
-
-  function getBulkDecisionItems(request) {
-    return (request.items || []).filter(
-      (item) => canDecideItem(request, item)
-    )
-  }
-
-  function toggleBulkDecisionItem(requestId, requestItemId) {
-    setBulkDecisionSelections((current) => {
-      const existing = current[requestId] || []
-
-      return {
-        ...current,
-        [requestId]: existing.includes(requestItemId)
-          ? existing.filter((id) => id !== requestItemId)
-          : [...existing, requestItemId],
-      }
-    })
-  }
-
-  function toggleAllDecisionItems(requestId, request) {
-    const eligibleIds = getBulkDecisionItems(request).map(
-      (item) => item.request_item_id
-    )
-
-    const selected = bulkDecisionSelections[requestId] || []
-
-    const allSelected =
-      eligibleIds.length > 0 &&
-      eligibleIds.every((id) => selected.includes(id))
-
-    setBulkDecisionSelections((current) => ({
-      ...current,
-      [requestId]: allSelected ? [] : eligibleIds,
-    }))
-  }
-
-  /*
-   * ---------------------------------------------------------
    * CHECKOUT / RETURN SELECTIONS
    * ---------------------------------------------------------
    */
@@ -417,59 +316,6 @@ export default function Requests() {
 
   function toggleReturnAsset(requestId, assetId, defaultAssetIds) {
     setReturnSelections((current) => {
-      const existing = current[requestId] ?? defaultAssetIds
-
-      return {
-        ...current,
-        [requestId]: existing.includes(assetId)
-          ? existing.filter((id) => id !== assetId)
-          : [...existing, assetId],
-      }
-    })
-  }
-
-  /*
-   * ---------------------------------------------------------
-   * RETURN VERIFICATION
-   * ---------------------------------------------------------
-   */
-
-  function canVerifyReturnItem(item) {
-    if (!currentPerson) return false
-
-    if (
-      currentRole === 'ADMIN' ||
-      currentRole === 'DEVELOPER'
-    ) {
-      return true
-    }
-
-    if (currentRole !== 'MANAGER') {
-      return false
-    }
-
-    return (
-      item.responsible_person_id === currentPerson.person_id ||
-      !item.responsible_person_id
-    )
-  }
-
-  function getVerifiableReturnItems(request) {
-    return (request.items || []).filter(
-      (item) =>
-        item.item_status === 'RETURNED' &&
-        canVerifyReturnItem(item)
-    )
-  }
-
-  function getDefaultVerifyReturnSelection(request) {
-    return getVerifiableReturnItems(request).map(
-      (item) => item.asset_id
-    )
-  }
-
-  function toggleVerifyReturnAsset(requestId, assetId, defaultAssetIds) {
-    setVerifyReturnSelections((current) => {
       const existing = current[requestId] ?? defaultAssetIds
 
       return {
@@ -582,73 +428,6 @@ export default function Requests() {
 
       setError(
         err.message || 'Failed to cancel request.'
-      )
-    } finally {
-      setActionRequestId(null)
-    }
-  }
-
-  /*
-   * ---------------------------------------------------------
-   * MANAGER DECISION
-   * ---------------------------------------------------------
-   */
-
-  async function handleBulkDecision(requestId, decision) {
-    clearMessages()
-
-    const selected = bulkDecisionSelections[requestId] || []
-
-    if (selected.length === 0) {
-      setError(
-        decision === 'APPROVED'
-          ? 'Select at least one item to approve.'
-          : 'Select at least one item to deny.'
-      )
-      return
-    }
-
-    setActionRequestId(requestId)
-
-    try {
-      await apiFetch(
-        `/api/requests/${requestId}/items/decide-all`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            decision,
-            request_item_id: selected,
-            notes: bulkDecisionNotes[requestId]?.trim() || null,
-          }),
-        }
-      )
-
-      setSuccess(
-        decision === 'APPROVED'
-          ? `${selected.length} selected item${selected.length === 1 ? '' : 's'} approved.`
-          : `${selected.length} selected item${selected.length === 1 ? '' : 's'} denied.`
-      )
-
-      setBulkDecisionSelections((current) => ({
-        ...current,
-        [requestId]: [],
-      }))
-
-      setBulkDecisionNotes((current) => {
-        const next = { ...current }
-        delete next[requestId]
-        return next
-      })
-
-      await loadData()
-    } catch (err) {
-      console.error('Error applying request decision:', err)
-
-      setError(
-        err.message || 'Failed to update request approval.'
       )
     } finally {
       setActionRequestId(null)
@@ -772,70 +551,6 @@ export default function Requests() {
     }
   }
 
-  /*
-   * ---------------------------------------------------------
-   * VERIFY RETURN
-   * ---------------------------------------------------------
-   */
-
-  async function handleVerifyReturn(request) {
-    clearMessages()
-
-    const defaultAssetIds =
-      getDefaultVerifyReturnSelection(request)
-
-    const selected =
-      verifyReturnSelections[request.request_id] ?? defaultAssetIds
-
-    if (selected.length === 0) {
-      setError('Select at least one asset to verify as returned.')
-      return
-    }
-
-    setActionRequestId(request.request_id)
-
-    try {
-      await apiFetch(
-        `/api/requests/${request.request_id}/return/verify`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            asset_ids: selected,
-            notes: returnNotes[request.request_id]?.trim() || null,
-          }),
-        }
-      )
-
-      setSuccess(
-        'Return verified and physical possession updated.'
-      )
-
-      setVerifyReturnSelections((current) => {
-        const next = { ...current }
-        delete next[request.request_id]
-        return next
-      })
-
-      setReturnNotes((current) => ({
-        ...current,
-        [request.request_id]: '',
-      }))
-
-      await loadData()
-    } catch (err) {
-      console.error('Failed to verify return:', err)
-
-      setError(
-        err.message || 'Failed to verify return.'
-      )
-    } finally {
-      setActionRequestId(null)
-    }
-  }
-
   function toggleRequestExpanded(requestId) {
     setExpandedRequests((current) => ({
       ...current,
@@ -858,844 +573,543 @@ export default function Requests() {
       request.requested_by === currentPerson?.person_id
   )
 
-  const approvalRequests = requests.filter(
-    (request) =>
-      request.status === 'PENDING' &&
-      getBulkDecisionItems(request).length > 0
-  )
-
-  const returnRequests = requests.filter(
-    (request) =>
-      request.status === 'RETURN_PENDING' &&
-      canManageRequests
-  )
-
   return (
-    <div className="requests-page">
+    <div className="requests-page my-requests-page">
       <header className="requests-header">
         <div>
           <p className="eyebrow">Equipment</p>
 
-          <h1>Requests</h1>
+          <h1>My Requests</h1>
 
           <p className="requests-subtitle">
-            Ask for equipment, approve what you are responsible for,
-            and keep track of what is out.
+            Request equipment and track your pickups and returns.
           </p>
         </div>
 
-        <button
-          type="button"
-          className="request-button request-button-light"
-          onClick={() => loadData(true)}
-          disabled={refreshing}
-        >
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div className="request-header-actions">
+          <a className="request-link-button" href="#request-history">View history</a>
+          <button
+            type="button"
+            className="request-button request-button-light"
+            onClick={() => loadData(true)}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </header>
 
       {error && (
-        <div className="request-message request-message-error">
+        <div className="request-message request-message-error" role="alert">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="request-message request-message-success">
+        <div className="request-message request-message-success" role="status">
           {success}
         </div>
       )}
 
       <div className="request-layout">
-        <main className="request-main-column">
+        <section className="request-create-panel" aria-labelledby="new-request-heading">
+          <div className="request-create-inner">
+            <h2 id="new-request-heading">New equipment request</h2>
 
-          {/* MANAGER WORKSPACE */}
+            <p className="request-create-copy">
+              Pick a kit, choose individual equipment, or do both.
+            </p>
 
-          {canManageRequests &&
-            (approvalRequests.length > 0 ||
-              returnRequests.length > 0) && (
-              <section className="request-section">
-                <div className="request-section-heading">
-                  <div>
-                    <p className="eyebrow">Manager</p>
-                    <h2>Needs your attention</h2>
-                  </div>
+            <form className="request-form" onSubmit={handleCreateRequest}>
+              <fieldset>
+                <legend>Equipment</legend>
+                <label className="request-field">
+                  <span>Add a kit</span>
+
+                  <select
+                    value={selectedKitId}
+                    onChange={(event) =>
+                      handleKitChange(event.target.value)
+                    }
+                  >
+                    <option value="">No kit</option>
+
+                    {kits.map((kit) => (
+                      <option
+                        key={kit.kit_id}
+                        value={kit.kit_id}
+                      >
+                        {kit.kit_code} · {kit.kit_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="request-field">
+                  <span>Add specific equipment</span>
+
+                  <input
+                    type="search"
+                    value={assetSearch}
+                    onChange={(event) =>
+                      setAssetSearch(event.target.value)
+                    }
+                    placeholder="Search by code, name or model"
+                  />
+                </label>
+
+                <div className="request-asset-picker">
+                  {filteredAvailableAssets.length === 0 ? (
+                    <p className="request-picker-empty">
+                      No available equipment found.
+                    </p>
+                  ) : (
+                    filteredAvailableAssets
+                      .slice(0, 40)
+                      .map((asset) => (
+                        <label
+                          key={asset.asset_id}
+                          className={
+                            selectedAssets.includes(asset.asset_id)
+                              ? 'request-asset-option selected'
+                              : 'request-asset-option'
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedAssets.includes(
+                              asset.asset_id
+                            )}
+                            onChange={() =>
+                              toggleAsset(asset.asset_id)
+                            }
+                          />
+
+                          <span>
+                            <strong>{getAssetDisplayName(asset)}</strong>
+                            {getAssetReference(asset) && (
+                              <small>{getAssetReference(asset)}</small>
+                            )}
+                          </span>
+                        </label>
+                      ))
+                  )}
                 </div>
 
-                {/* APPROVAL REQUESTS */}
+                <div className="request-selection-bar">
+                  <span>{selectedAssets.length} selected</span>
 
-                {approvalRequests.map((request) => {
-                  const eligible = getBulkDecisionItems(request)
-                  const selected =
-                    bulkDecisionSelections[request.request_id] || []
-                  const busy =
-                    actionRequestId === request.request_id
-
-                  const allSelected =
-                    eligible.length > 0 &&
-                    eligible.every((item) =>
-                      selected.includes(item.request_item_id)
-                    )
-
-                  return (
-                    <article
-                      key={request.request_id}
-                      className="request-action-card"
+                  {selectedAssets.length > 0 && (
+                    <button
+                      type="button"
+                      className="request-link-button"
+                      onClick={clearSelectedAssets}
                     >
-                      <div className="request-action-card-main">
-                        <div>
-                          <span className="request-status status-pending">
-                            Approval needed
-                          </span>
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </fieldset>
 
-                          <h3>
-                            {formatPerson(request.requester)} requested
-                            equipment
-                          </h3>
+              <fieldset>
+                <legend>Request details</legend>
+                <label className="request-field">
+                  <span>Note</span>
 
-                          <p>
-                            {eligible.length} actionable{' '}
-                            {eligible.length === 1 ? 'item' : 'items'}{' '}
-                            require your decision.
-                          </p>
-                        </div>
-                      </div>
+                  <textarea
+                    value={purpose}
+                    onChange={(event) =>
+                      setPurpose(event.target.value)
+                    }
+                    placeholder="What is this equipment needed for?"
+                    rows="3"
+                  />
+                </label>
 
-                      <div className="request-selection-bar">
-                        <span>
-                          {selected.length} of {eligible.length} selected
+                <div className="request-date-grid">
+                  <label className="request-field">
+                    <span>Need from</span>
+
+                    <input
+                      type="date"
+                      value={neededFrom}
+                      onChange={(event) =>
+                        setNeededFrom(event.target.value)
+                      }
+                    />
+                  </label>
+
+                  <label className="request-field">
+                    <span>Return by</span>
+
+                    <input
+                      type="date"
+                      value={neededUntil}
+                      min={neededFrom || undefined}
+                      onChange={(event) =>
+                        setNeededUntil(event.target.value)
+                      }
+                    />
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  className="request-submit"
+                  disabled={
+                    creating ||
+                    selectedAssets.length === 0 ||
+                    !neededFrom ||
+                    !neededUntil ||
+                    neededUntil < neededFrom
+                  }
+                >
+                  {creating ? 'Sending…' : 'Send request'}
+                </button>
+              </fieldset>
+            </form>
+          </div>
+        </section>
+
+        <section className="request-section" id="request-history" aria-labelledby="request-history-heading" tabIndex={-1}>
+          <div className="request-section-heading">
+            <h2 id="request-history-heading">Request history</h2>
+          </div>
+
+          {myRequests.length === 0 ? (
+            <div className="request-empty">
+              You haven't made any equipment requests yet.
+            </div>
+          ) : (
+            <div className="request-list">
+              {myRequests.map((request) => {
+                const expanded =
+                  !!expandedRequests[request.request_id]
+
+                const busy =
+                  actionRequestId === request.request_id
+
+                const approvedItems = request.items.filter(
+                  (item) =>
+                    item.item_status === 'REQUESTED' &&
+                    item.approval_status === 'APPROVED'
+                )
+
+                const takenItems = request.items.filter(
+                  (item) => item.item_status === 'TAKEN'
+                )
+
+                const approvedAssetIds =
+                  approvedItems.map((item) => item.asset_id)
+
+                const takenAssetIds =
+                  takenItems.map((item) => item.asset_id)
+
+                const selectedCheckout =
+                  checkoutSelections[request.request_id] ??
+                  approvedAssetIds
+
+                const selectedReturn =
+                  returnSelections[request.request_id] ??
+                  takenAssetIds
+
+                return (
+                  <article
+                    key={request.request_id}
+                    className="request-history-card"
+                  >
+                    <button
+                      type="button"
+                      className="request-card-top"
+                      onClick={() =>
+                        toggleRequestExpanded(request.request_id)
+                      }
+                    >
+                      <div>
+                        <span className="request-card-date">
+                          {formatDate(request.created_at)}
                         </span>
 
-                        <button
-                          type="button"
-                          className="request-link-button"
-                          onClick={() =>
-                            toggleAllDecisionItems(
-                              request.request_id,
-                              request
-                            )
-                          }
-                          disabled={busy}
-                        >
-                          {allSelected ? 'Clear selection' : 'Select all'}
-                        </button>
+                        <h3>
+                          {request.requestedKit
+                            ? `${request.requestedKit.kit_code} · ${request.requestedKit.kit_name}`
+                            : `${request.items.length} equipment item${
+                                request.items.length === 1 ? '' : 's'
+                              }`}
+                        </h3>
+
+                        {request.purpose && (
+                          <p>{request.purpose}</p>
+                        )}
                       </div>
 
-                      <div className="request-item-list">
-                        {request.items.map((item) => {
-                          const actionable =
-                            canDecideItem(request, item)
+                      <div className="request-card-status">
+                        <span
+                          className={`request-status ${getStatusClass(
+                            request.status
+                          )}`}
+                        >
+                          {formatStatus(request.status)}
+                        </span>
 
-                          const selectedItem =
-                            selected.includes(item.request_item_id)
+                        <span className="request-chevron">
+                          {expanded ? '−' : '+'}
+                        </span>
+                      </div>
+                    </button>
 
-                          return (
+                    {expanded && (
+                      <div className="request-card-body">
+                        <div className="request-card-details">
+                          <span>
+                            <strong>From</strong>
+                            {formatDate(request.needed_from)}
+                          </span>
+
+                          <span>
+                            <strong>Return by</strong>
+                            {formatDate(request.needed_until)}
+                          </span>
+
+                          <span>
+                            <strong>Equipment</strong>
+                            {request.items.length} item
+                            {request.items.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+
+                        <div className="request-item-list">
+                          {request.items.map((item) => (
                             <div
                               key={item.request_item_id}
                               className="request-item"
                             >
                               <div>
-                                {actionable ? (
-                                  <label className="request-check-item">
+                                <strong>
+                                  {getAssetDisplayName(item.asset)}
+                                </strong>
+                                {getAssetReference(item.asset) && (
+                                  <span>{getAssetReference(item.asset)}</span>
+                                )}
+
+                                <span>
+                                  {item.responsible_person_name ||
+                                    (item.responsible_person_id
+                                      ? formatPerson(
+                                          peopleById[
+                                            item.responsible_person_id
+                                          ]
+                                        )
+                                      : 'General')}
+                                </span>
+                              </div>
+
+                              <div className="request-item-meta">
+                                <span
+                                  className={`request-status ${getStatusClass(
+                                    item.approval_status
+                                  )}`}
+                                >
+                                  {formatStatus(item.approval_status)}
+                                </span>
+
+                                <span>
+                                  {formatStatus(item.item_status)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* PENDING */}
+
+                        {request.status === 'PENDING' && (
+                          <div className="request-inline-action">
+                            <p>
+                              Waiting for the responsible manager to
+                              approve this request.
+                            </p>
+
+                            <button
+                              type="button"
+                              className="request-button request-button-light"
+                              disabled={busy}
+                              onClick={() =>
+                                handleCancelRequest(request.request_id)
+                              }
+                            >
+                              {busy ? 'Cancelling…' : 'Cancel request'}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* CHECKOUT */}
+
+                        {['APPROVED', 'CHECKED_OUT'].includes(
+                          request.status
+                        ) &&
+                          approvedItems.length > 0 && (
+                            <div className="request-inline-action request-take-action">
+                              <p className="eyebrow">Approved</p>
+
+                              <h4>What did you actually take?</h4>
+
+                              <p>
+                                Everything is selected by default.
+                                Untick anything you did not take.
+                              </p>
+
+                              <div className="request-check-list">
+                                {approvedItems.map((item) => (
+                                  <label key={item.request_item_id}>
                                     <input
                                       type="checkbox"
-                                      checked={selectedItem}
+                                      checked={selectedCheckout.includes(
+                                        item.asset_id
+                                      )}
                                       onChange={() =>
-                                        toggleBulkDecisionItem(
+                                        toggleCheckoutAsset(
                                           request.request_id,
-                                          item.request_item_id
+                                          item.asset_id,
+                                          approvedAssetIds
                                         )
                                       }
-                                      disabled={busy}
                                     />
 
                                     <span>
-                                      <strong>
-                                        {getAssetDisplayName(item.asset)}
-                                      </strong>
-
-                                      <small>
-                                        {item.responsible_person_name ||
-                                          (item.responsible_person_id
-                                            ? formatPerson(
-                                                peopleById[
-                                                  item.responsible_person_id
-                                                ]
-                                              )
-                                            : 'General')}
-                                      </small>
+                                      <strong>{getAssetDisplayName(item.asset)}</strong>
+                                      {getAssetReference(item.asset) && (
+                                        <small> · {getAssetReference(item.asset)}</small>
+                                      )}
                                     </span>
                                   </label>
-                                ) : (
-                                  <div>
-                                    <strong>
-                                      {getAssetDisplayName(item.asset)}
-                                    </strong>
-
-                                    <span>
-                                      {item.responsible_person_name ||
-                                        (item.responsible_person_id
-                                          ? formatPerson(
-                                              peopleById[
-                                                item.responsible_person_id
-                                              ]
-                                            )
-                                          : 'General')}
-                                    </span>
-                                  </div>
-                                )}
+                                ))}
                               </div>
-
-                              <span
-                                className={`request-status ${getStatusClass(
-                                  item.approval_status
-                                )}`}
-                              >
-                                {formatStatus(item.approval_status)}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      <div className="request-action-buttons">
-                        <button
-                          type="button"
-                          className="request-button request-button-primary"
-                          disabled={busy || selected.length === 0}
-                          onClick={() =>
-                            handleBulkDecision(
-                              request.request_id,
-                              'APPROVED'
-                            )
-                          }
-                        >
-                          {busy
-                            ? 'Saving…'
-                            : `Approve selected${
-                                selected.length > 0
-                                  ? ` (${selected.length})`
-                                  : ''
-                              }`}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="request-button request-button-danger"
-                          disabled={busy || selected.length === 0}
-                          onClick={() =>
-                            handleBulkDecision(
-                              request.request_id,
-                              'REJECTED'
-                            )
-                          }
-                        >
-                          {busy
-                            ? 'Saving…'
-                            : `Deny selected${
-                                selected.length > 0
-                                  ? ` (${selected.length})`
-                                  : ''
-                              }`}
-                        </button>
-                      </div>
-                    </article>
-                  )
-                })}
-
-                {/* RETURN VERIFICATION */}
-
-                {returnRequests.map((request) => {
-                  const busy =
-                    actionRequestId === request.request_id
-
-                  const verifiableItems =
-                    getVerifiableReturnItems(request)
-
-                  const defaultVerifyIds =
-                    verifiableItems.map((item) => item.asset_id)
-
-                  const selectedVerifyIds =
-                    verifyReturnSelections[request.request_id] ??
-                    defaultVerifyIds
-
-                  return (
-                    <article
-                      key={request.request_id}
-                      className="request-action-card"
-                    >
-                      <div className="request-action-card-main">
-                        <div>
-                          <span className="request-status status-return-pending">
-                            Return to verify
-                          </span>
-
-                          <h3>
-                            {formatPerson(request.requester)} returned
-                            equipment
-                          </h3>
-
-                          <p>
-                            Everything that has been declared returned is
-                            selected by default. Untick anything that has
-                            not physically come back.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="request-selection-bar">
-                        <span>
-                          {selectedVerifyIds.length} of{' '}
-                          {verifiableItems.length} selected
-                        </span>
-                      </div>
-
-                      <div className="request-check-list">
-                        {verifiableItems.map((item) => (
-                          <label key={item.request_item_id}>
-                            <input
-                              type="checkbox"
-                              checked={selectedVerifyIds.includes(
-                                item.asset_id
-                              )}
-                              onChange={() =>
-                                toggleVerifyReturnAsset(
-                                  request.request_id,
-                                  item.asset_id,
-                                  defaultVerifyIds
-                                )
-                              }
-                              disabled={busy}
-                            />
-
-                            <span>
-                              {getAssetDisplayName(item.asset)}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-
-                      {verifiableItems.length === 0 && (
-                        <p>
-                          No returned equipment is currently available
-                          for verification.
-                        </p>
-                      )}
-
-                      <div className="request-action-buttons">
-                        <button
-                          type="button"
-                          className="request-button request-button-primary"
-                          disabled={
-                            busy || selectedVerifyIds.length === 0
-                          }
-                          onClick={() =>
-                            handleVerifyReturn(request)
-                          }
-                        >
-                          {busy
-                            ? 'Verifying…'
-                            : `Verify returned (${selectedVerifyIds.length})`}
-                        </button>
-                      </div>
-                    </article>
-                  )
-                })}
-              </section>
-            )}
-
-          {/* MY REQUESTS */}
-
-          <section className="request-section">
-            <div className="request-section-heading">
-              <div>
-                <p className="eyebrow">Your equipment</p>
-                <h2>My requests</h2>
-              </div>
-            </div>
-
-            {myRequests.length === 0 ? (
-              <div className="request-empty">
-                You haven't made any equipment requests yet.
-              </div>
-            ) : (
-              <div className="request-list">
-                {myRequests.map((request) => {
-                  const expanded =
-                    !!expandedRequests[request.request_id]
-
-                  const busy =
-                    actionRequestId === request.request_id
-
-                  const approvedItems = request.items.filter(
-                    (item) =>
-                      item.item_status === 'REQUESTED' &&
-                      item.approval_status === 'APPROVED'
-                  )
-
-                  const takenItems = request.items.filter(
-                    (item) => item.item_status === 'TAKEN'
-                  )
-
-                  const approvedAssetIds =
-                    approvedItems.map((item) => item.asset_id)
-
-                  const takenAssetIds =
-                    takenItems.map((item) => item.asset_id)
-
-                  const selectedCheckout =
-                    checkoutSelections[request.request_id] ??
-                    approvedAssetIds
-
-                  const selectedReturn =
-                    returnSelections[request.request_id] ??
-                    takenAssetIds
-
-                  return (
-                    <article
-                      key={request.request_id}
-                      className="request-history-card"
-                    >
-                      <button
-                        type="button"
-                        className="request-card-top"
-                        onClick={() =>
-                          toggleRequestExpanded(request.request_id)
-                        }
-                      >
-                        <div>
-                          <span className="request-card-date">
-                            {formatDate(request.created_at)}
-                          </span>
-
-                          <h3>
-                            {request.requestedKit
-                              ? `${request.requestedKit.kit_code} · ${request.requestedKit.kit_name}`
-                              : `${request.items.length} equipment item${
-                                  request.items.length === 1 ? '' : 's'
-                                }`}
-                          </h3>
-
-                          {request.purpose && (
-                            <p>{request.purpose}</p>
-                          )}
-                        </div>
-
-                        <div className="request-card-status">
-                          <span
-                            className={`request-status ${getStatusClass(
-                              request.status
-                            )}`}
-                          >
-                            {formatStatus(request.status)}
-                          </span>
-
-                          <span className="request-chevron">
-                            {expanded ? '−' : '+'}
-                          </span>
-                        </div>
-                      </button>
-
-                      {expanded && (
-                        <div className="request-card-body">
-                          <div className="request-card-details">
-                            <span>
-                              <strong>From</strong>
-                              {formatDate(request.needed_from)}
-                            </span>
-
-                            <span>
-                              <strong>Return by</strong>
-                              {formatDate(request.needed_until)}
-                            </span>
-
-                            <span>
-                              <strong>Equipment</strong>
-                              {request.items.length} item
-                              {request.items.length === 1 ? '' : 's'}
-                            </span>
-                          </div>
-
-                          <div className="request-item-list">
-                            {request.items.map((item) => (
-                              <div
-                                key={item.request_item_id}
-                                className="request-item"
-                              >
-                                <div>
-                                  <strong>
-                                    {getAssetDisplayName(item.asset)}
-                                  </strong>
-
-                                  <span>
-                                    {item.responsible_person_name ||
-                                      (item.responsible_person_id
-                                        ? formatPerson(
-                                            peopleById[
-                                              item.responsible_person_id
-                                            ]
-                                          )
-                                        : 'General')}
-                                  </span>
-                                </div>
-
-                                <div className="request-item-meta">
-                                  <span
-                                    className={`request-status ${getStatusClass(
-                                      item.approval_status
-                                    )}`}
-                                  >
-                                    {formatStatus(item.approval_status)}
-                                  </span>
-
-                                  <span>
-                                    {formatStatus(item.item_status)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* PENDING */}
-
-                          {request.status === 'PENDING' && (
-                            <div className="request-inline-action">
-                              <p>
-                                Waiting for the responsible manager to
-                                approve this request.
-                              </p>
 
                               <button
                                 type="button"
-                                className="request-button request-button-light"
-                                disabled={busy}
+                                className="request-button request-button-primary"
+                                disabled={
+                                  busy || selectedCheckout.length === 0
+                                }
                                 onClick={() =>
-                                  handleCancelRequest(request.request_id)
+                                  handleDeclareCheckout(request)
                                 }
                               >
-                                {busy ? 'Cancelling…' : 'Cancel request'}
+                                {busy
+                                  ? 'Saving…'
+                                  : `Confirm taken (${selectedCheckout.length})`}
                               </button>
                             </div>
                           )}
 
-                          {/* CHECKOUT */}
+                        {/* RETURN */}
 
-                          {['APPROVED', 'CHECKED_OUT'].includes(
-                            request.status
-                          ) &&
-                            approvedItems.length > 0 && (
-                              <div className="request-inline-action request-take-action">
-                                <p className="eyebrow">Approved</p>
+                        {request.status === 'CHECKED_OUT' &&
+                          takenItems.length > 0 && (
+                            <div className="request-inline-action request-take-action">
+                              <p className="eyebrow">Returning</p>
 
-                                <h4>What did you actually take?</h4>
+                              <h4>What did you bring back?</h4>
 
-                                <p>
-                                  Everything is selected by default.
-                                  Untick anything you did not take.
-                                </p>
+                              <p>
+                                Everything is selected by default.
+                                Untick anything you did not return.
+                              </p>
 
-                                <div className="request-check-list">
-                                  {approvedItems.map((item) => (
-                                    <label key={item.request_item_id}>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedCheckout.includes(
-                                          item.asset_id
-                                        )}
-                                        onChange={() =>
-                                          toggleCheckoutAsset(
-                                            request.request_id,
-                                            item.asset_id,
-                                            approvedAssetIds
-                                          )
-                                        }
-                                      />
+                              <div className="request-check-list">
+                                {takenItems.map((item) => (
+                                  <label key={item.request_item_id}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedReturn.includes(
+                                        item.asset_id
+                                      )}
+                                      onChange={() =>
+                                        toggleReturnAsset(
+                                          request.request_id,
+                                          item.asset_id,
+                                          takenAssetIds
+                                        )
+                                      }
+                                    />
 
-                                      <span>
-                                        {getAssetDisplayName(item.asset)}
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
-
-                                <button
-                                  type="button"
-                                  className="request-button request-button-primary"
-                                  disabled={
-                                    busy || selectedCheckout.length === 0
-                                  }
-                                  onClick={() =>
-                                    handleDeclareCheckout(request)
-                                  }
-                                >
-                                  {busy
-                                    ? 'Saving…'
-                                    : `Confirm taken (${selectedCheckout.length})`}
-                                </button>
+                                    <span>
+                                      <strong>{getAssetDisplayName(item.asset)}</strong>
+                                      {getAssetReference(item.asset) && (
+                                        <small> · {getAssetReference(item.asset)}</small>
+                                      )}
+                                    </span>
+                                  </label>
+                                ))}
                               </div>
-                            )}
 
-                          {/* RETURN */}
-
-                          {request.status === 'CHECKED_OUT' &&
-                            takenItems.length > 0 && (
-                              <div className="request-inline-action request-take-action">
-                                <p className="eyebrow">Returning</p>
-
-                                <h4>What did you bring back?</h4>
-
-                                <p>
-                                  Everything is selected by default.
-                                  Untick anything you did not return.
-                                </p>
-
-                                <div className="request-check-list">
-                                  {takenItems.map((item) => (
-                                    <label key={item.request_item_id}>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedReturn.includes(
-                                          item.asset_id
-                                        )}
-                                        onChange={() =>
-                                          toggleReturnAsset(
-                                            request.request_id,
-                                            item.asset_id,
-                                            takenAssetIds
-                                          )
-                                        }
-                                      />
-
-                                      <span>
-                                        {getAssetDisplayName(item.asset)}
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
-
-                                <button
-                                  type="button"
-                                  className="request-button request-button-primary"
-                                  disabled={
-                                    busy || selectedReturn.length === 0
-                                  }
-                                  onClick={() =>
-                                    handleDeclareReturn(request)
-                                  }
-                                >
-                                  {busy
-                                    ? 'Sending…'
-                                    : `Return equipment (${selectedReturn.length})`}
-                                </button>
-                              </div>
-                            )}
-
-                          {/* RETURN PENDING */}
-
-                          {request.status === 'RETURN_PENDING' && (
-                            <div className="request-inline-action request-info-action">
-                              <p className="eyebrow">Return sent</p>
-
-                              <h4>
-                                Waiting for the responsible manager to
-                                verify the return.
-                              </h4>
-
-                              <p>You don't need to do anything else.</p>
+                              <button
+                                type="button"
+                                className="request-button request-button-primary"
+                                disabled={
+                                  busy || selectedReturn.length === 0
+                                }
+                                onClick={() =>
+                                  handleDeclareReturn(request)
+                                }
+                              >
+                                {busy
+                                  ? 'Sending…'
+                                  : `Return equipment (${selectedReturn.length})`}
+                              </button>
                             </div>
                           )}
 
-                          {/* REJECTED */}
+                        {/* RETURN PENDING */}
 
-                          {request.status === 'REJECTED' && (
-                            <div className="request-inline-action request-info-action">
-                              <p className="eyebrow">Request denied</p>
+                        {request.status === 'RETURN_PENDING' && (
+                          <div className="request-inline-action request-info-action">
+                            <p className="eyebrow">Return sent</p>
 
-                              <h4>
-                                This request was not approved.
-                              </h4>
-                            </div>
-                          )}
+                            <h4>
+                              Waiting for the responsible manager to
+                              verify the return.
+                            </h4>
 
-                          {/* COMPLETE */}
+                            <p>You don't need to do anything else.</p>
+                          </div>
+                        )}
 
-                          {['COMPLETED', 'FULFILLED'].includes(
-                            request.status
-                          ) && (
-                            <div className="request-inline-action request-info-action">
-                              <p className="eyebrow">Complete</p>
+                        {/* REJECTED */}
 
-                              <h4>
-                                All equipment has been returned and
-                                verified.
-                              </h4>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </article>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-        </main>
+                        {request.status === 'REJECTED' && (
+                          <div className="request-inline-action request-info-action">
+                            <p className="eyebrow">Request denied</p>
 
-        {/* CREATE REQUEST */}
+                            <h4>
+                              This request was not approved.
+                            </h4>
+                          </div>
+                        )}
 
-        <aside className="request-create-panel">
-          <div className="request-create-inner">
-            <p className="eyebrow">New request</p>
+                        {/* COMPLETE */}
 
-            <h2>What do you need?</h2>
+                        {['COMPLETED', 'FULFILLED'].includes(
+                          request.status
+                        ) && (
+                          <div className="request-inline-action request-info-action">
+                            <p className="eyebrow">Complete</p>
 
-            <p className="request-create-copy">
-              Pick a kit, choose individual equipment, or do both.
-              Add one note and send the request.
-            </p>
-
-            <form onSubmit={handleCreateRequest}>
-              <label className="request-field">
-                <span>Add a kit</span>
-
-                <select
-                  value={selectedKitId}
-                  onChange={(event) =>
-                    handleKitChange(event.target.value)
-                  }
-                >
-                  <option value="">No kit</option>
-
-                  {kits.map((kit) => (
-                    <option
-                      key={kit.kit_id}
-                      value={kit.kit_id}
-                    >
-                      {kit.kit_code} · {kit.kit_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="request-field">
-                <span>Add specific equipment</span>
-
-                <input
-                  type="search"
-                  value={assetSearch}
-                  onChange={(event) =>
-                    setAssetSearch(event.target.value)
-                  }
-                  placeholder="Search by code, name or model"
-                />
-              </label>
-
-              <div className="request-asset-picker">
-                {filteredAvailableAssets.length === 0 ? (
-                  <p className="request-picker-empty">
-                    No available equipment found.
-                  </p>
-                ) : (
-                  filteredAvailableAssets
-                    .slice(0, 40)
-                    .map((asset) => (
-                      <label
-                        key={asset.asset_id}
-                        className={
-                          selectedAssets.includes(asset.asset_id)
-                            ? 'request-asset-option selected'
-                            : 'request-asset-option'
-                        }
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedAssets.includes(
-                            asset.asset_id
-                          )}
-                          onChange={() =>
-                            toggleAsset(asset.asset_id)
-                          }
-                        />
-
-                        <span>
-                          <strong>{asset.asset_code}</strong>
-                          <small>{asset.name}</small>
-                        </span>
-                      </label>
-                    ))
-                )}
-              </div>
-
-              <div className="request-selection-bar">
-                <span>{selectedAssets.length} selected</span>
-
-                {selectedAssets.length > 0 && (
-                  <button
-                    type="button"
-                    className="request-link-button"
-                    onClick={clearSelectedAssets}
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              <label className="request-field">
-                <span>Note</span>
-
-                <textarea
-                  value={purpose}
-                  onChange={(event) =>
-                    setPurpose(event.target.value)
-                  }
-                  placeholder="What is this equipment needed for?"
-                  rows="3"
-                />
-              </label>
-
-              <div className="request-date-grid">
-                <label className="request-field">
-                  <span>Need from</span>
-
-                  <input
-                    type="date"
-                    value={neededFrom}
-                    onChange={(event) =>
-                      setNeededFrom(event.target.value)
-                    }
-                  />
-                </label>
-
-                <label className="request-field">
-                  <span>Return by</span>
-
-                  <input
-                    type="date"
-                    value={neededUntil}
-                    min={neededFrom || undefined}
-                    onChange={(event) =>
-                      setNeededUntil(event.target.value)
-                    }
-                  />
-                </label>
-              </div>
-
-              <button
-                type="submit"
-                className="request-submit"
-                disabled={
-                  creating ||
-                  selectedAssets.length === 0 ||
-                  !neededFrom ||
-                  !neededUntil ||
-                  neededUntil < neededFrom
-                }
-              >
-                {creating ? 'Sending…' : 'Send request'}
-              </button>
-            </form>
-          </div>
-        </aside>
+                            <h4>
+                              All equipment has been returned and
+                              verified.
+                            </h4>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )
